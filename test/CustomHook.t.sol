@@ -33,17 +33,12 @@ import {IAavePool} from "../src/interfaces/IAavePool.sol";
 contract TestCustomHook is Test, IERC721Receiver {
     using SafeERC20 for IERC20;
 
-    IPositionManager constant positionManager =
-        IPositionManager(0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e);
-    IPoolManager constant poolManager =
-        IPoolManager(0x000000000004444c5dc75cB358380D2e3dE08A90);
-    IPermit2 constant permit2 =
-        IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
-    IUniversalRouter constant universalRouter =
-        IUniversalRouter(0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af);
+    IPositionManager constant positionManager = IPositionManager(0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e);
+    IPoolManager constant poolManager = IPoolManager(0x000000000004444c5dc75cB358380D2e3dE08A90);
+    IPermit2 constant permit2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
+    IUniversalRouter constant universalRouter = IUniversalRouter(0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af);
 
-    IAavePool constant aavePool =
-        IAavePool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2);
+    IAavePool constant aavePool = IAavePool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2);
     IERC20 constant aUSDC = IERC20(0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c);
     IERC20 constant aUSDT = IERC20(0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a);
     IERC20 constant USDC = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
@@ -57,23 +52,14 @@ contract TestCustomHook is Test, IERC721Receiver {
     PoolKey poolKey;
     uint160 initSqrtPriceX96;
 
-    function onERC721Received(
-        address,
-        address,
-        uint256,
-        bytes calldata
-    ) external returns (bytes4) {
+    function onERC721Received(address, address, uint256, bytes calldata) external returns (bytes4) {
         return this.onERC721Received.selector;
     }
 
     function setupPool(address usdc, address usdt) public {
         (, bytes32 salt) = HookMiner.find(
             address(this),
-            uint160(
-                Hooks.BEFORE_SWAP_FLAG |
-                    Hooks.BEFORE_INITIALIZE_FLAG |
-                    Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG
-            ),
+            uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG),
             type(CustomHook).creationCode,
             abi.encode(address(poolManager), address(aavePool))
         );
@@ -100,62 +86,29 @@ contract TestCustomHook is Test, IERC721Receiver {
         // Add liquidity
         deal(address(USDC), address(this), 1_000_000e6);
         deal(address(USDT), address(this), 1_000_000e6);
-        USDC.forceApprove(address(permit2), type(uint).max);
-        USDT.forceApprove(address(permit2), type(uint).max);
-        permit2.approve(
-            address(USDC),
-            address(positionManager),
-            type(uint160).max,
-            uint48(block.timestamp + 60)
-        );
-        permit2.approve(
-            address(USDT),
-            address(positionManager),
-            type(uint160).max,
-            uint48(block.timestamp + 60)
-        );
+        USDC.forceApprove(address(permit2), type(uint256).max);
+        USDT.forceApprove(address(permit2), type(uint256).max);
+        permit2.approve(address(USDC), address(positionManager), type(uint160).max, uint48(block.timestamp + 60));
+        permit2.approve(address(USDT), address(positionManager), type(uint160).max, uint48(block.timestamp + 60));
 
-        bytes memory actions = abi.encodePacked(
-            uint8(Actions.MINT_POSITION),
-            uint8(Actions.SETTLE_PAIR)
-        );
+        bytes memory actions = abi.encodePacked(uint8(Actions.MINT_POSITION), uint8(Actions.SETTLE_PAIR));
         bytes[] memory params = new bytes[](2);
-        params[0] = abi.encode(
-            poolKey,
-            -200,
-            200,
-            1_000_000e6,
-            type(uint).max,
-            type(uint).max,
-            address(this),
-            ""
-        );
-        params[1] = abi.encode(
-            Currency.wrap(address(USDC)),
-            Currency.wrap(address(USDT))
-        );
-        positionManager.modifyLiquidities(
-            abi.encode(actions, params),
-            block.timestamp + 60
-        );
+        params[0] = abi.encode(poolKey, -200, 200, 1_000_000e6, type(uint256).max, type(uint256).max, address(this), "");
+        params[1] = abi.encode(Currency.wrap(address(USDC)), Currency.wrap(address(USDT)));
+        positionManager.modifyLiquidities(abi.encode(actions, params), block.timestamp + 60);
     }
 
-    function swapExactInputSingle(
-        PoolKey memory key,
-        uint128 amountIn,
-        uint128 minAmountOut,
-        address user
-    ) public returns (uint256 amountOut) {
+    function swapExactInputSingle(PoolKey memory key, uint128 amountIn, uint128 minAmountOut, address user)
+        public
+        returns (uint256 amountOut)
+    {
         // Encode the Universal Router command
         bytes memory commands = abi.encodePacked(uint8(Commands.V4_SWAP));
         bytes[] memory inputs = new bytes[](1);
 
         // Encode V4Router actions
-        bytes memory actions = abi.encodePacked(
-            uint8(Actions.SWAP_EXACT_IN_SINGLE),
-            uint8(Actions.SETTLE_ALL),
-            uint8(Actions.TAKE_ALL)
-        );
+        bytes memory actions =
+            abi.encodePacked(uint8(Actions.SWAP_EXACT_IN_SINGLE), uint8(Actions.SETTLE_ALL), uint8(Actions.TAKE_ALL));
 
         // Prepare parameters for each action
         bytes[] memory params = new bytes[](3);
@@ -178,9 +131,7 @@ contract TestCustomHook is Test, IERC721Receiver {
         universalRouter.execute(commands, inputs, block.timestamp + 60);
 
         // Verify and return the output amount
-        amountOut = IERC20(Currency.unwrap(key.currency1)).balanceOf(
-            address(this)
-        );
+        amountOut = IERC20(Currency.unwrap(key.currency1)).balanceOf(address(this));
         require(amountOut >= minAmountOut, "Insufficient output amount");
         return amountOut;
     }
@@ -197,18 +148,18 @@ contract TestCustomHook is Test, IERC721Receiver {
         deal(address(USDT), CHARLIE, 1_000_000e6);
 
         vm.startPrank(ALICE);
-        USDC.forceApprove(address(permit2), type(uint).max);
-        USDT.forceApprove(address(permit2), type(uint).max);
+        USDC.forceApprove(address(permit2), type(uint256).max);
+        USDT.forceApprove(address(permit2), type(uint256).max);
         vm.stopPrank();
 
         vm.startPrank(BOB);
-        USDC.forceApprove(address(permit2), type(uint).max);
-        USDT.forceApprove(address(permit2), type(uint).max);
+        USDC.forceApprove(address(permit2), type(uint256).max);
+        USDT.forceApprove(address(permit2), type(uint256).max);
         vm.stopPrank();
 
         vm.startPrank(CHARLIE);
-        USDC.forceApprove(address(permit2), type(uint).max);
-        USDT.forceApprove(address(permit2), type(uint).max);
+        USDC.forceApprove(address(permit2), type(uint256).max);
+        USDT.forceApprove(address(permit2), type(uint256).max);
         vm.stopPrank();
     }
 
@@ -243,16 +194,11 @@ contract TestCustomHook is Test, IERC721Receiver {
     function testSwapFeeToAave() public {
         setupPool(address(USDC), address(USDT));
 
-        permit2.approve(
-            address(USDC),
-            address(universalRouter),
-            type(uint160).max,
-            uint48(block.timestamp + 60)
-        );
+        permit2.approve(address(USDC), address(universalRouter), type(uint160).max, uint48(block.timestamp + 60));
 
         uint128 swapAmount = 1_000e6;
-        uint fee = swapAmount / 1000;
-        uint aReserveBefore = USDC.balanceOf(address(aUSDC));
+        uint256 fee = swapAmount / 1000;
+        uint256 aReserveBefore = USDC.balanceOf(address(aUSDC));
 
         swapExactInputSingle(poolKey, swapAmount, 0, address(this));
 
@@ -264,43 +210,29 @@ contract TestCustomHook is Test, IERC721Receiver {
         setupPool(address(USDC), address(USDT));
 
         vm.startPrank(ALICE);
-        permit2.approve(
-            address(USDC),
-            address(universalRouter),
-            type(uint160).max,
-            uint48(block.timestamp + 60)
-        );
+        permit2.approve(address(USDC), address(universalRouter), type(uint160).max, uint48(block.timestamp + 60));
 
         uint128 swapAmount = 1_000e6;
-        uint fee = swapAmount / 1000;
+        uint256 fee = swapAmount / 1000;
 
         swapExactInputSingle(poolKey, swapAmount, 0, ALICE);
         vm.stopPrank();
 
-        assertEq(
-            customHook.devFeeAccrued(Currency.wrap(address(USDC))),
-            fee / 2
-        );
+        assertEq(customHook.devFeeAccrued(Currency.wrap(address(USDC))), fee / 2);
         assertEq(customHook.devFeeAccrued(Currency.wrap(address(USDT))), 0);
-        assertEq(
-            customHook.pendingRewards(ALICE, Currency.wrap(address(USDC))),
-            fee / 2
-        );
+        assertEq(customHook.pendingRewards(ALICE, Currency.wrap(address(USDC))), fee / 2);
 
         vm.startPrank(address(this));
-        uint usdcDevBalBefore = USDC.balanceOf(address(this));
+        uint256 usdcDevBalBefore = USDC.balanceOf(address(this));
         customHook.claimDevFee(Currency.wrap(address(USDC)));
         assertEq(customHook.devFeeAccrued(Currency.wrap(address(USDC))), 0);
         assertEq(USDC.balanceOf(address(this)) - usdcDevBalBefore, fee / 2);
         vm.stopPrank();
 
         vm.startPrank(ALICE);
-        uint usdcBalBefore = USDC.balanceOf(ALICE);
+        uint256 usdcBalBefore = USDC.balanceOf(ALICE);
         customHook.claimUserFee(Currency.wrap(address(USDC)));
-        assertEq(
-            customHook.pendingRewards(ALICE, Currency.wrap(address(USDC))),
-            0
-        );
+        assertEq(customHook.pendingRewards(ALICE, Currency.wrap(address(USDC))), 0);
         vm.stopPrank();
     }
 
@@ -308,84 +240,37 @@ contract TestCustomHook is Test, IERC721Receiver {
         setupPool(address(USDC), address(USDT));
 
         uint128 swapAmount = 2_000e6;
-        uint rewards = swapAmount / 2000;
+        uint256 rewards = swapAmount / 2000;
 
         vm.startPrank(ALICE);
-        permit2.approve(
-            address(USDC),
-            address(universalRouter),
-            type(uint160).max,
-            uint48(block.timestamp + 60)
-        );
+        permit2.approve(address(USDC), address(universalRouter), type(uint160).max, uint48(block.timestamp + 60));
         swapExactInputSingle(poolKey, swapAmount, 0, ALICE);
         vm.stopPrank();
-        assertEq(
-            customHook.pendingRewards(ALICE, Currency.wrap(address(USDC))),
-            rewards
-        );
+        assertEq(customHook.pendingRewards(ALICE, Currency.wrap(address(USDC))), rewards);
 
         vm.startPrank(BOB);
-        permit2.approve(
-            address(USDC),
-            address(universalRouter),
-            type(uint160).max,
-            uint48(block.timestamp + 60)
-        );
+        permit2.approve(address(USDC), address(universalRouter), type(uint160).max, uint48(block.timestamp + 60));
         swapExactInputSingle(poolKey, swapAmount, 0, BOB);
         vm.stopPrank();
-        assertEq(
-            customHook.pendingRewards(ALICE, Currency.wrap(address(USDC))),
-            rewards + rewards / 2
-        );
-        assertEq(
-            customHook.pendingRewards(BOB, Currency.wrap(address(USDC))),
-            rewards / 2
-        );
+        assertEq(customHook.pendingRewards(ALICE, Currency.wrap(address(USDC))), rewards + rewards / 2);
+        assertEq(customHook.pendingRewards(BOB, Currency.wrap(address(USDC))), rewards / 2);
 
         vm.startPrank(CHARLIE);
-        permit2.approve(
-            address(USDC),
-            address(universalRouter),
-            type(uint160).max,
-            uint48(block.timestamp + 60)
-        );
+        permit2.approve(address(USDC), address(universalRouter), type(uint160).max, uint48(block.timestamp + 60));
         swapExactInputSingle(poolKey, swapAmount * 2, 0, CHARLIE);
         vm.stopPrank();
-        assertEq(
-            customHook.pendingRewards(ALICE, Currency.wrap(address(USDC))),
-            1e6 * 2
-        );
-        assertEq(
-            customHook.pendingRewards(BOB, Currency.wrap(address(USDC))),
-            1e6
-        );
-        assertEq(
-            customHook.pendingRewards(CHARLIE, Currency.wrap(address(USDC))),
-            1e6
-        );
+        assertEq(customHook.pendingRewards(ALICE, Currency.wrap(address(USDC))), 1e6 * 2);
+        assertEq(customHook.pendingRewards(BOB, Currency.wrap(address(USDC))), 1e6);
+        assertEq(customHook.pendingRewards(CHARLIE, Currency.wrap(address(USDC))), 1e6);
 
         vm.prank(ALICE);
         customHook.claimUserFee(Currency.wrap(address(USDC)));
         vm.startPrank(BOB);
-        permit2.approve(
-            address(USDC),
-            address(universalRouter),
-            type(uint160).max,
-            uint48(block.timestamp + 60)
-        );
+        permit2.approve(address(USDC), address(universalRouter), type(uint160).max, uint48(block.timestamp + 60));
         swapExactInputSingle(poolKey, swapAmount, 0, BOB);
         vm.stopPrank();
-        assertEq(
-            customHook.pendingRewards(ALICE, Currency.wrap(address(USDC))),
-            0.2e6
-        );
-        assertEq(
-            customHook.pendingRewards(BOB, Currency.wrap(address(USDC))),
-            1.4e6
-        );
-        assertEq(
-            customHook.pendingRewards(CHARLIE, Currency.wrap(address(USDC))),
-            1.4e6
-        );
+        assertEq(customHook.pendingRewards(ALICE, Currency.wrap(address(USDC))), 0.2e6);
+        assertEq(customHook.pendingRewards(BOB, Currency.wrap(address(USDC))), 1.4e6);
+        assertEq(customHook.pendingRewards(CHARLIE, Currency.wrap(address(USDC))), 1.4e6);
     }
 }
