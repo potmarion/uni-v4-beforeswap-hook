@@ -186,8 +186,8 @@ contract TestCustomHook is Test, IERC721Receiver {
     }
 
     function setUp() public {
-        // vm.createSelectFork("https://rpc.ankr.com/eth");
-        vm.createSelectFork("http://127.0.0.1:8545");
+        vm.createSelectFork("https://rpc.ankr.com/eth");
+        // vm.createSelectFork("http://127.0.0.1:8545");
 
         deal(address(USDC), ALICE, 1_000_000e6);
         deal(address(USDT), ALICE, 1_000_000e6);
